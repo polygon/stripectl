@@ -21,7 +21,7 @@ GCFLAGS += -Wstrict-prototypes -Wundef -Wall -Wextra -Wunreachable-code
 GCFLAGS += -fsingle-precision-constant -funsigned-char -funsigned-bitfields -fshort-enums
 
 # Debug stuff
-#GCFLAGS += -Wa,-adhlns=$(<:.c=.lst),-gstabs -g 
+#GCFLAGS += -Wa,-adhlns=$(<:.c=.lst),-gstabs -g
 
 LDFLAGS =  -mcpu=cortex-m3 -mthumb -O$(OPTIMIZATION) -nostartfiles  -T$(LDCRIPT) 
 
@@ -64,11 +64,14 @@ clean:
 	@echo "  \033[1;34mGCC\033[0m $<"
 	@$(GCC) $(GCFLAGS) -o $@ -c $<
 
+main.s: main.c Makefile $(HEADERS)
+	@$(GCC) $(GCFLAGS) -S -o $@ -c $<
+
 #########################################################################
 
 flash: firmware.bin
-	cp firmware.bin /Volumes/CRP\ DISABLD/
-	diskutil eject `diskutil list | grep -B 2 CRP | grep dev`
+	dd if=firmware.bin of=/dev/lpcflash/mini-board
+	sync
 
 
 .PHONY : clean all flash
