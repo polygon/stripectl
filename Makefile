@@ -65,13 +65,14 @@ clean:
 	@$(GCC) $(GCFLAGS) -o $@ -c $<
 
 main.s: main.c Makefile $(HEADERS)
-	@$(GCC) $(GCFLAGS) -S -o $@ -c $<
+	@$(GCC) $(GCFLAGS) -S -o $@ -fverbose-asm -c $<
 
 #########################################################################
 
 flash: firmware.bin
-	dd if=firmware.bin of=/dev/lpcflash/mini-board
+	mcopy -oi /dev/lpcflash/mini-board firmware.bin ::/
 	sync
+	echo "Flashing completed!"
 
 
 .PHONY : clean all flash
