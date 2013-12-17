@@ -13,6 +13,7 @@
 */
 
 #define NUM_LEDS 240
+#define NUM_BYTE 720 // Always make this 3 times 240
 
 #include <stdio.h>
 
@@ -24,52 +25,79 @@
 
 volatile uint32_t msTicks = 0;
 static uint16_t buttonsInitialized = 0;
-static uint8_t led_data[NUM_LEDS][3];
+static uint8_t inp_buf[NUM_LEDS][3];
 static uint32_t ledptr = 0;
 static uint32_t colptr = 0;
 uint32_t T0H, T0L, T1H, T1L, RES;
 #define DATAPIN 11
 
-void output_stripe_data()
+volatile uint8_t curbyte;
+volatile uint8_t disp_buf[NUM_BYTE];
+volatile uint16_t outptr = 0;
+volatile uint8_t bitptr = 0x80;
+volatile uint8_t nextval = 1;
+volatile uint8_t curbyte = 0;
+volatile uint8_t nn = 0;
+
+void CT32B0_OutputHandler(void)
 {
-    uint32_t led, color;
-    uint8_t bit;
-    uint32_t wait;
-    //__disable_irq();
+    if (LPC_CT32B0->IR & 0x1) LPC_CT32B0->IR |= 0x1;
+    if (LPC_CT32B0->IR & 0x2) LPC_CT32B0->IR |= 0x2;
+    if (LPC_CT32B0->IR & 0x4) LPC_CT32B0->IR |= 0x4;
+    if (LPC_CT32B0->IR & 0x8) LPC_CT32B0->IR |= 0x8;
+    LPC_GPIO->B0[DATAPIN] = nextval;
+    if (nextval)
+    {
+        if (curbyte & bitptr)
+            LPC_CT32B0->MCR = 0x03 << 6;
+        else
+            LPC_CT32B0->MCR = 0x03;
+        nextval = 0;
+    }
+    else
+    {
+        if (curbyte & bitptr)
+            LPC_CT32B0->MCR = 0x03 << 9;
+        else
+            LPC_CT32B0->MCR = 0x03 << 3;
+        bitptr = bitptr / 2;
+        nextval = 1;
+    }
 
-    // Initialize timer counter
-    LPC_CT32B0->TCR = 0;
+    if (!bitptr)
+    {
+        LPC_GPIO->B0[14] = 1;
+        bitptr = 128;
+        outptr++;
+        curbyte = disp_buf[outptr];
+    }
+
+    if (outptr == NUM_BYTE)
+    {
+        LPC_CT32B0->TCR = 0;
+    }
+
+    nn++;
+    if (nn > 2)
+        LPC_GPIO->B0[12] = 1;
+}
+
+void output_stripe_data(void)
+{
     LPC_CT32B0->TC = 0;
+    bitptr = 128;
+    outptr = 0;
+    nextval = 0;
+    curbyte = disp_buf[0];
 
-    for (led = 0; led < NUM_LEDS; led++)
-        for (color = 0; color < 3; color++)
-            for (bit = 128; bit != 0; bit = bit >> 1)
-                if (led_data[led][color] & bit)
-                {
-                    LPC_GPIO->B0[DATAPIN] = 1;
-                    LPC_CT32B0->TCR = 1;
-                    LPC_CT32B0->MCR = 0x6 << 6;
-                    while (LPC_CT32B0->TCR & 0x1) {}
+    // We need to transmit the first half-bit to bootstrap the timer
+    if (curbyte & 0x80)
+        LPC_CT32B0->MCR = 0x03 << 6;
+    else
+        LPC_CT32B0->MCR = 0x03;
 
-                    LPC_GPIO->B0[DATAPIN] = 0;
-                    LPC_CT32B0->TCR = 1;
-                    LPC_CT32B0->MCR = 0x6 << 9;
-                    while (LPC_CT32B0->TCR & 0x1) {}
-                }
-                else
-                {
-                    LPC_GPIO->B0[DATAPIN] = 1;
-                    LPC_CT32B0->TCR = 1;
-                    LPC_CT32B0->MCR = 0x6;
-                    while (LPC_CT32B0->TCR & 0x1) {}
-
-                    LPC_GPIO->B0[DATAPIN] = 0;
-                    LPC_CT32B0->TCR = 1;
-                    LPC_CT32B0->MCR = 0x6 << 3;
-                    while (LPC_CT32B0->TCR & 0x1) {}
-                }
-
-    //__enable_irq();
+    LPC_CT32B0->TCR = 1;
+    LPC_GPIO->B0[DATAPIN] = 1;
 }
 
 void SysTick_Handler(void) {
@@ -86,7 +114,7 @@ void recv_data(uint8_t* buffer, uint32_t length)
     uint32_t i;
     for (i = 0; i < length; i++)
     {
-        led_data[ledptr][colptr] = buffer[i];
+        inp_buf[ledptr][colptr] = buffer[i];
         colptr++;
         if (colptr == 3)
         {
@@ -105,7 +133,7 @@ void recv_data(uint8_t* buffer, uint32_t length)
 int main(void) {
 
 	SystemCoreClockUpdate();
-    //SysTick_Config(SystemCoreClock/1000);
+    SysTick_Config(SystemCoreClock/1000);
 
     uint32_t i;
 
@@ -156,24 +184,27 @@ int main(void) {
     LPC_CT32B0->MR2 = T1H;
     LPC_CT32B0->MR3 = T1L;
 
+    NVIC_EnableIRQ(CT32B0_IRQn);
+    NVIC_SetPriority(CT32B0_IRQn, 0);
+
     // Initialize USB CDC
     usb_init();
 
     for (i = 0; i < NUM_LEDS; i++)
     {
-        led_data[i][0] = 32;
-        led_data[i][1] = 0;
-        led_data[i][2] = 0;
+        inp_buf[i][0] = 32;
+        inp_buf[i][1] = 0;
+        inp_buf[i][2] = 0;
     }
+
+    LPC_GPIO->B0[12] = 0;
+    LPC_GPIO->B0[14] = 0;
 
     output_stripe_data();
 
     //buttons_init();
     //buttonsInitialized=1;
     //buttons_get_press( KEY_C|KEY_B|KEY_A );
-
-    LPC_GPIO->B0[12] = 0;
-    LPC_GPIO->B0[14] = 1;
 
     while (1)
     {}

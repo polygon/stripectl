@@ -211,6 +211,7 @@ void usb_init(void) {
 
 					/* enable IRQ */
 					NVIC_EnableIRQ(USB_IRQ_IRQn); //  enable USB0 interrrupts 
+                    NVIC_SetPriority(USB_IRQ_IRQn, 1);
 					/* USB Connect */
 					pUsbApi->hw->Connect(hUsb, 1);
 				}

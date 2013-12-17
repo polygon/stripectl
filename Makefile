@@ -65,7 +65,7 @@ clean:
 	@$(GCC) $(GCFLAGS) -o $@ -c $<
 
 main.s: main.c Makefile $(HEADERS)
-	@$(GCC) $(GCFLAGS) -S -o $@ -fverbose-asm -c $<
+	@$(GCC) $(GCFLAGS) -S -o $@ -c $<
 
 #########################################################################
 
