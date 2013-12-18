@@ -70,8 +70,9 @@ main.s: main.c Makefile $(HEADERS)
 #########################################################################
 
 flash: firmware.bin
-	dd if=firmware.bin of=/dev/lpcflash/mini-board
+	mcopy -oi /dev/lpcflash/mini-board firmware.bin ::/
 	sync
+	echo "Flashing completed!"
 
 
 .PHONY : clean all flash
