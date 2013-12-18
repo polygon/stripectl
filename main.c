@@ -18,6 +18,7 @@
 #include "drivers/usb_cdc.h"
 #include "drivers/buttons.h"
 #include "drivers/armmath.h"
+#include "core/inc/lpc13uxx_uart.h"
 //#include "core/inc/lpc13uxx_timer32.h"
 
 volatile uint32_t msTicks = 0;
@@ -25,7 +26,7 @@ static uint16_t buttonsInitialized = 0;
 static uint8_t mode  = 0;
 static uint8_t led_data[NUM_LEDS][3];
 uint32_t T0H, T0L, T1H, T1L, RES;
-#define DATAPIN 16
+#define DATAPIN 11
 
 void output_stripe_data()
 {
@@ -73,15 +74,15 @@ void delay_ms(uint32_t ms) {
 int main(void) {
 
 	SystemCoreClockUpdate();
-	SysTick_Config(SystemCoreClock/1000);
+    SysTick_Config(SystemCoreClock/1000);
 
     uint32_t i;
 
-    T0H = (SystemCoreClock * 5  ) / 10000000;
-    T1H = (SystemCoreClock * 12 ) / 10000000;
-    T0L = (SystemCoreClock * 20 ) / 10000000;
-    T1L = (SystemCoreClock * 13 ) / 10000000;
-    RES = (SystemCoreClock * 500) / 10000000;
+    T0H = (SystemCoreClock * 5  ) / 20000000;
+    T1H = (SystemCoreClock * 12 ) / 20000000;
+    T0L = (SystemCoreClock * 20 ) / 20000000;
+    T1L = (SystemCoreClock * 13 ) / 20000000;
+    RES = (SystemCoreClock * 500) / 20000000;
 
 
 	// clock to GPIO
@@ -102,19 +103,25 @@ int main(void) {
 
     for (i = 0; i < NUM_LEDS; i++)
     {
-        led_data[i][0] = 64;
-        led_data[i][1] = 0;
+        led_data[i][0] = 0;
+        led_data[i][1] = 32;
         led_data[i][2] = 0;
     }
+    LPC_GPIO->B0[12] = 0;
     output_stripe_data();
+    LPC_GPIO->B0[14] = 0;
+    //UARTInit(9600);
 
 	buttons_init();
 	buttonsInitialized=1;
     buttons_get_press( KEY_C|KEY_B|KEY_A );
-    LPC_GPIO->B0[12] = 1;
-    LPC_GPIO->B0[14] = 1;
 
     while (1)
-    {}
+    {
+        /*char a = 89;
+        UARTSend(&a, 1);*/
+        delay_ms(100);
+        LPC_GPIO->B0[12] = 1 - LPC_GPIO->B0[12];
+    }
 }
 
