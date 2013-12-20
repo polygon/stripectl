@@ -27,7 +27,7 @@ volatile uint32_t msTicks = 0;
 static uint16_t buttonsInitialized = 0;
 static uint8_t mode  = 0;
 static uint8_t led_data[NUM_LEDS][3];
-uint32_t T0H, T0L, T1H, T1L, RES;
+uint32_t T0H, T0L, T1H, T1L;
 #define DATAPIN 11
 
 void output_stripe_data()
@@ -80,12 +80,10 @@ int main(void) {
 
     uint32_t i;
 
-    T0H = (SystemCoreClock * 5  ) / 20000000;
-    T1H = (SystemCoreClock * 12 ) / 20000000;
-    T0L = (SystemCoreClock * 20 ) / 20000000;
-    T1L = (SystemCoreClock * 13 ) / 20000000;
-    RES = (SystemCoreClock * 500) / 20000000;
-
+    T0H = 18;   // Actual: 18
+    T1H = 43;   // Actual: 43.2
+    T0L = 72;   // Actual: 72
+    T1L = 47;   // Actual: 46.8
 
 	// clock to GPIO
 	LPC_SYSCON->SYSAHBCLKCTRL |= (1<<6);
@@ -119,62 +117,34 @@ int main(void) {
     LPC_GPIO->B0[12] = 0;
     output_stripe_data();
     LPC_GPIO->B0[14] = 0;
-    //UARTInit(9600);
+    UARTInit(1500000);
 
 	buttons_init();
 	buttonsInitialized=1;
     buttons_get_press( KEY_C|KEY_B|KEY_A );
-    int pos = STARTLED;
-    int dir = 4;
-    int ended = 0;
+    uint32_t idx_led = 0;
+    uint32_t idx_col = 0;
+    uint8_t pt = 48;
 
     while (1)
     {
-        if (ended)
+        LPC_USART->FCR |= 0x2;  // Clear out FIFO
+        LPC_GPIO->B0[12] = 0;
+        UARTSend(&pt, 1);       // Transmit ready signal
+        while (idx_led < NUM_LEDS)
         {
-            for (i = 0; i < NUM_LEDS; i++)
+            if (LPC_USART->LSR & 0x1)   // There is data available
+                led_data[idx_led][idx_col++] = LPC_USART->RBR;
+            if (idx_col == 3)
             {
-                led_data[i][1] = 0;
+                idx_led++;
+                idx_col = 0;
             }
-            output_stripe_data();
-            delay_ms(100);
-            ended = 0;
-            for (i = 0; i < NUM_LEDS; i++)
-            {
-                led_data[i][1] = 0;
-            }
-            output_stripe_data();
-            delay_ms(500);
-
         }
 
-        for (i = 0; i < NUM_LEDS; i++)
-        {
-            led_data[i][1] = 0;
-        }
-        led_data[pos][1] = 4;
-        led_data[pos+1][1] = 8;
-        led_data[pos+2][1] = 16;
-        led_data[pos+3][1] = 32;
-        led_data[pos+4][1] = 64;
-        led_data[pos+5][1] = 128;
-        led_data[pos+6][1] = 255;
-        led_data[pos+7][1] = 128;
-        led_data[pos+8][1] = 64;
-        led_data[pos+9][1] = 32;
-        led_data[pos+10][1] = 16;
-        led_data[pos+11][1] = 8;
-        led_data[pos+12][1] = 4;
-        pos += dir;
-        if (pos >= STOPLED-1)
-            dir = -6;
-        if (pos <= STARTLED-6)
-        {
-            ended = 1;
-            dir = 6;
-            pos = STARTLED;
-        }
+        LPC_GPIO->B0[12] = 1;
         output_stripe_data();
+        idx_led = 0;
     }
 }
 
