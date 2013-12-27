@@ -12,20 +12,15 @@
 */
 
 #define NUM_LEDS 240
-#define STARTLED 60
-#define STOPLED 170
 
 #include <stdio.h>
 
 #include "drivers/usb_cdc.h"
-#include "drivers/buttons.h"
 #include "drivers/armmath.h"
 #include "core/inc/lpc13uxx_uart.h"
 //#include "core/inc/lpc13uxx_timer32.h"
 
 volatile uint32_t msTicks = 0;
-static uint16_t buttonsInitialized = 0;
-static uint8_t mode  = 0;
 static uint8_t led_data[NUM_LEDS][3];
 uint32_t T0H, T0L, T1H, T1L;
 #define DATAPIN 11
@@ -61,11 +56,6 @@ void output_stripe_data()
 
 void SysTick_Handler(void) {
 	msTicks++;
-
-	if(buttonsInitialized)
-	{
-		buttons_sample();
-	}
 }
 
 void delay_ms(uint32_t ms) {
@@ -117,20 +107,16 @@ int main(void) {
     LPC_GPIO->B0[12] = 0;
     output_stripe_data();
     LPC_GPIO->B0[14] = 0;
-    UARTInit(1500000);
+    UARTInit(115200);
 
-	buttons_init();
-	buttonsInitialized=1;
-    buttons_get_press( KEY_C|KEY_B|KEY_A );
     uint32_t idx_led = 0;
     uint32_t idx_col = 0;
-    uint8_t pt = 48;
 
     while (1)
     {
         LPC_USART->FCR |= 0x2;  // Clear out FIFO
         LPC_GPIO->B0[12] = 0;
-        UARTSend(&pt, 1);       // Transmit ready signal
+        //UARTSend(&pt, 1);       // Transmit ready signal
         while (idx_led < NUM_LEDS)
         {
             if (LPC_USART->LSR & 0x1)   // There is data available
