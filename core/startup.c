@@ -92,7 +92,7 @@ void *vector_table[] __attribute__ ((section(".vectors"))) = {
 	I2C_IRQHandler,
     CT16B0_IRQHandler,
     CT16B1_IRQHandler,
-    CT32B0_OutputHandler,
+    0,
     CT32B1_IRQHandler,
 	SSP0_IRQHandler,
     USART_IRQHandler,

@@ -1,5 +1,4 @@
 #include "main.h"
-#include "drivers/usb_cdc.h"
 
 /*
 
@@ -26,73 +25,33 @@ static uint8_t led_data[NUM_LEDS][3];
 uint32_t T0H, T0L, T1H, T1L;
 #define DATAPIN 11
 
-volatile uint8_t curbyte;
-volatile uint8_t disp_buf[NUM_BYTE];
-volatile uint16_t outptr = 0;
-volatile uint8_t bitptr = 0x80;
-volatile uint8_t nextval = 1;
-volatile uint8_t curbyte = 0;
-volatile uint8_t nn = 0;
-
-void CT32B0_OutputHandler(void)
+void output_stripe_data()
 {
-    if (LPC_CT32B0->IR & 0x1) LPC_CT32B0->IR |= 0x1;
-    if (LPC_CT32B0->IR & 0x2) LPC_CT32B0->IR |= 0x2;
-    if (LPC_CT32B0->IR & 0x4) LPC_CT32B0->IR |= 0x4;
-    if (LPC_CT32B0->IR & 0x8) LPC_CT32B0->IR |= 0x8;
-    LPC_GPIO->B0[DATAPIN] = nextval;
-    if (nextval)
-    {
-        if (curbyte & bitptr)
-            LPC_CT32B0->MCR = 0x03 << 6;
-        else
-            LPC_CT32B0->MCR = 0x03;
-        nextval = 0;
-    }
-    else
-    {
-        if (curbyte & bitptr)
-            LPC_CT32B0->MCR = 0x03 << 9;
-        else
-            LPC_CT32B0->MCR = 0x03 << 3;
-        bitptr = bitptr / 2;
-        nextval = 1;
-    }
+    uint32_t led, color;
+    uint8_t bit;
+    uint32_t wait;
+    __disable_irq();
 
-    if (!bitptr)
-    {
-        LPC_GPIO->B0[14] = 1;
-        bitptr = 128;
-        outptr++;
-        curbyte = disp_buf[outptr];
-    }
+    for (led = 0; led < NUM_LEDS; led++)
+        for (color = 0; color < 3; color++)
+            for (bit = 128; bit != 0; bit = bit >> 1)
+                if (led_data[led][color] & bit)
+                {
+                    LPC_GPIO->B0[DATAPIN] = 1;
+                    for (wait = 0; wait < T1H/3; wait++) {}
+                    LPC_GPIO->B0[DATAPIN] = 0;
+                    for (wait = 0; wait < T1L/3; wait++) {}
+                }
+                else
+                {
+                    LPC_GPIO->B0[DATAPIN] = 1;
+                    for (wait = 0; wait < T0H/3; wait++) {}
+                    LPC_GPIO->B0[DATAPIN] = 0;
+                    for (wait = 0; wait < T0L/3; wait++) {}
 
-    if (outptr == NUM_BYTE)
-    {
-        LPC_CT32B0->TCR = 0;
-    }
+                }
 
-    nn++;
-    if (nn > 2)
-        LPC_GPIO->B0[12] = 1;
-}
-
-void output_stripe_data(void)
-{
-    LPC_CT32B0->TC = 0;
-    bitptr = 128;
-    outptr = 0;
-    nextval = 0;
-    curbyte = disp_buf[0];
-
-    // We need to transmit the first half-bit to bootstrap the timer
-    if (curbyte & 0x80)
-        LPC_CT32B0->MCR = 0x03 << 6;
-    else
-        LPC_CT32B0->MCR = 0x03;
-
-    LPC_CT32B0->TCR = 1;
-    LPC_GPIO->B0[DATAPIN] = 1;
+    __enable_irq();
 }
 
 void SysTick_Handler(void) {
@@ -102,27 +61,6 @@ void SysTick_Handler(void) {
 void delay_ms(uint32_t ms) {
 	uint32_t now = msTicks;
 	while ((msTicks-now) < ms);
-}
-
-void recv_data(uint8_t* buffer, uint32_t length)
-{
-    uint32_t i;
-    for (i = 0; i < length; i++)
-    {
-        inp_buf[ledptr][colptr] = buffer[i];
-        colptr++;
-        if (colptr == 3)
-        {
-            ledptr++;
-            colptr = 0;
-        }
-        if (ledptr == NUM_LEDS)
-        {
-            ledptr = 0;
-            output_stripe_data();
-            usb_send(46);
-        }
-    }
 }
 
 int main(void) {
@@ -139,7 +77,6 @@ int main(void) {
 
 	// clock to GPIO
 	LPC_SYSCON->SYSAHBCLKCTRL |= (1<<6);
-    LPC_SYSCON->SYSAHBCLKCTRL |= (1<<9);
 
 	// configure the two LEDs PINs as GPIO (they default to jtag)
 	LPC_IOCON->TMS_PIO0_12  &= ~0x07;
@@ -157,30 +94,6 @@ int main(void) {
     LPC_GPIO->DIR[0] |= (1<<DATAPIN);
 
     LPC_GPIO->B0[DATAPIN] = 0;
-
-    // Configure high precision wait timer
-    LPC_CT32B0->CTCR = 0x00;     /* binary: 00000000 */
-    LPC_CT32B0->TC = 0x00000000;     /* decimal 0 */
-    LPC_CT32B0->PR = 0x00000000;     /* decimal 0 */
-    LPC_CT32B0->MCR = 0x0000;     /* binary: 00000000_00000000 */
-    LPC_CT32B0->MR0 = 0x00000000;     /* decimal 0 */
-    LPC_CT32B0->MR1 = 0x00000000;     /* decimal 0 */
-    LPC_CT32B0->MR2 = 0x00000000;     /* decimal 0 */
-    LPC_CT32B0->MR3 = 0x00000000;     /* decimal 0 */
-    LPC_CT32B0->CCR = 0x0000;     /* binary: 00000000_00000000 */
-    LPC_CT32B0->EMR = 0x0AAF;     /* binary: 00001010_10101111 */
-    LPC_CT32B0->PWMC = 0x00000000;     /* binary: 00000000_00000000_00000000_00000000 */
-    LPC_CT32B0->TCR = 0x00;     /* binary: 00000000 */
-    LPC_CT32B0->MR0 = T0H;
-    LPC_CT32B0->MR1 = T0L;
-    LPC_CT32B0->MR2 = T1H;
-    LPC_CT32B0->MR3 = T1L;
-
-    NVIC_EnableIRQ(CT32B0_IRQn);
-    NVIC_SetPriority(CT32B0_IRQn, 0);
-
-    // Initialize USB CDC
-    usb_init();
 
     for (i = 0; i < NUM_LEDS; i++)
     {
