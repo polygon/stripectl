@@ -37,7 +37,7 @@ void SSP1_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
 void I2C_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
 void CT16B0_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
 void CT16B1_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
-//void CT32B0_OutputHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
+void CT32B0_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
 void CT32B1_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
 void SSP0_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
 void USART_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
@@ -50,8 +50,6 @@ void FMC_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
 void OSCFAIL_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
 void PVTCIRCUIT_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
 void USBWakeup_IRQHandler(void) __attribute__ ((weak, alias ("Dummy_Handler")));
-
-extern void CT32B0_OutputHandler(void);
 
 void Dummy_Handler(void);
 
@@ -74,28 +72,28 @@ void *vector_table[] __attribute__ ((section(".vectors"))) = {
 	SysTick_Handler,
 
 	/* LPC13Uxx specific interrupt vectors */
-    PIN_INT0_IRQHandler,
-    PIN_INT1_IRQHandler,
-    PIN_INT2_IRQHandler,
-    PIN_INT3_IRQHandler,
-    PIN_INT4_IRQHandler,
-    PIN_INT5_IRQHandler,
-    PIN_INT6_IRQHandler,
-    PIN_INT7_IRQHandler,
-    GINT0_IRQHandler,
-    GINT1_IRQHandler,
+	PIN_INT0_IRQHandler,
+	PIN_INT1_IRQHandler,
+	PIN_INT2_IRQHandler,
+	PIN_INT3_IRQHandler,
+	PIN_INT4_IRQHandler,
+	PIN_INT5_IRQHandler,
+	PIN_INT6_IRQHandler,
+	PIN_INT7_IRQHandler,
+	GINT0_IRQHandler,
+	GINT1_IRQHandler,
 	0,
 	0,
 	OSTIMER_IRQHandler,
 	0,
 	SSP1_IRQHandler,
 	I2C_IRQHandler,
-    CT16B0_IRQHandler,
-    CT16B1_IRQHandler,
-    0,
-    CT32B1_IRQHandler,
+	CT16B0_IRQHandler,
+	CT16B1_IRQHandler,
+	CT32B0_IRQHandler,
+	CT32B1_IRQHandler,
 	SSP0_IRQHandler,
-    USART_IRQHandler,
+	USART_IRQHandler,
 	USB_IRQHandler, 
 	USB_FIQHandler,
 	ADC_IRQHandler,

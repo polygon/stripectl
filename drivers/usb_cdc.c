@@ -111,20 +111,29 @@ ErrorCode_t VCOM_bulk_in_hdlr(USBD_HANDLE_T hUsb, void* data, uint32_t event)
 	return LPC_OK;
 }
 
-extern ErrorCode_t VCOM_bulk_out_hdlr(USBD_HANDLE_T hUsb, void *data, uint32_t event);
-ErrorCode_t VCOM_bulk_out_hdlr(USBD_HANDLE_T hUsb, void* data, uint32_t event)
+ErrorCode_t VCOM_bulk_out_hdlr(USBD_HANDLE_T hUsb, void* data, uint32_t event) 
 {
-    VCOM_DATA_T* pVcom = (VCOM_DATA_T*) data;
+	VCOM_DATA_T* pVcom = (VCOM_DATA_T*) data;
 
-    switch (event) {
-        case USB_EVT_OUT:
+	switch (event) {
+		case USB_EVT_OUT:
 
-            pVcom->rxlen = pUsbApi->hw->ReadEP(hUsb, USB_CDC_EP_BULK_OUT, pVcom->rxBuf);
-            break;
-        default:
-            break;
-    }
-    return LPC_OK;
+			LPC_GPIO->B0[12] ^= 1;
+			pVcom->rxlen = pUsbApi->hw->ReadEP(hUsb, USB_CDC_EP_BULK_OUT, pVcom->rxBuf);
+			//pVcom->rxBuf[0] = pVcom->rxlen;
+			pUsbApi->hw->WriteEP (pVcom->hUsb, USB_CDC_EP_BULK_IN, pVcom->rxBuf, pVcom->rxlen);     
+			//	if (pVcom->rxlen == 0) {
+			//        pVcom->rxlen = pUsbApi->hw->ReadEP(hUsb, USB_CDC_EP_BULK_OUT, pVcom->rxBuf);
+			//        pVcom->send_fn(pVcom);
+			//      } else {
+			//        /* indicate bridge write buffer pending in USB buf */
+			//        pVcom->usbrx_pend = 1;
+			//      }
+			break;
+		default: 
+			break;
+	}
+	return LPC_OK;
 }
 void USB_IRQHandler(void)
 {
@@ -208,7 +217,6 @@ void usb_init(void) {
 
 					/* enable IRQ */
 					NVIC_EnableIRQ(USB_IRQ_IRQn); //  enable USB0 interrrupts 
-                    NVIC_SetPriority(USB_IRQ_IRQn, 1);
 					/* USB Connect */
 					pUsbApi->hw->Connect(hUsb, 1);
 				}

@@ -87,50 +87,50 @@ void delay32Ms(uint8_t timer_num, uint32_t delayInMs)
 ** Returned value:		None
 ** 
 ******************************************************************************/
-/*void CT32B0_IRQHandler(void)
+void CT32B0_IRQHandler(void)
 {
   if ( LPC_CT32B0->IR & (0x01<<0) )
   {  
-    LPC_CT32B0->IR = 0x1<<0;			// clear interrupt flag
+	LPC_CT32B0->IR = 0x1<<0;			/* clear interrupt flag */
 	timer32_0_counter[0]++;
   }
   if ( LPC_CT32B0->IR & (0x01<<1) )
   {  
-    LPC_CT32B0->IR = 0x1<<1;			// clear interrupt flag
+	LPC_CT32B0->IR = 0x1<<1;			/* clear interrupt flag */
 	timer32_0_counter[1]++;
   }
   if ( LPC_CT32B0->IR & (0x01<<2) )
   {  
-    LPC_CT32B0->IR = 0x1<<2;			// clear interrupt flag
+	LPC_CT32B0->IR = 0x1<<2;			/* clear interrupt flag */
 	timer32_0_counter[2]++;
   }
   if ( LPC_CT32B0->IR & (0x01<<3) )
   {  
-    LPC_CT32B0->IR = 0x1<<3;			// clear interrupt flag
+	LPC_CT32B0->IR = 0x1<<3;			/* clear interrupt flag */
 	timer32_0_counter[3]++;
   }
   if ( LPC_CT32B0->IR & (0x1<<4) )
   {  
-    LPC_CT32B0->IR = 0x1<<4;			// clear interrupt flag
+	LPC_CT32B0->IR = 0x1<<4;			/* clear interrupt flag */
 	timer32_0_capture[0]++;
   }
   if ( LPC_CT32B0->IR & (0x1<<5) )
   {  
-    LPC_CT32B0->IR = 0x1<<5;			// clear interrupt flag
+	LPC_CT32B0->IR = 0x1<<5;			/* clear interrupt flag */
 	timer32_0_capture[1]++;
   }
   if ( LPC_CT32B0->IR & (0x1<<6) )
   {  
-    LPC_CT32B0->IR = 0x1<<6;			// clear interrupt flag
+	LPC_CT32B0->IR = 0x1<<6;			/* clear interrupt flag */
 	timer32_0_capture[2]++;
   }
   if ( LPC_CT32B0->IR & (0x1<<7) )
   {  
-    LPC_CT32B0->IR = 0x1<<7;			// clear interrupt flag
+	LPC_CT32B0->IR = 0x1<<7;			/* clear interrupt flag */
 	timer32_0_capture[3]++;
   }
   return;
-}*/
+}
 
 /******************************************************************************
 ** Function name:		CT32B1_IRQHandler

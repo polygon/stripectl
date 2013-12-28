@@ -107,7 +107,7 @@ int main(void) {
     LPC_GPIO->B0[12] = 0;
     output_stripe_data();
     LPC_GPIO->B0[14] = 0;
-    UARTInit(115200);
+    UARTInit(1500000);
 
     uint32_t idx_led = 0;
     uint32_t idx_col = 0;
