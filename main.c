@@ -100,7 +100,7 @@ int main(void) {
         if (!(i % 10))
         {
             led_data[i][0] = 0;
-            led_data[i][1] = 0;
+            led_data[i][1] = 32;
             led_data[i][2] = 0;
         }
     }

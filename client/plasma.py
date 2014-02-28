@@ -1,15 +1,19 @@
 __author__ = 'jan'
 
 from ledstripe import LEDStripe
+from stripesim import Stripesim
+from stripecache import Stripecache
 import numpy as np
 import signal
 
 def plasma():
     led = LEDStripe()
+#led = Stripesim()
+    #led = Stripecache('plasma.a')
     x = np.linspace(0, 1, 240)
     t = 0
-    while (1):
-        t += 0.2
+    for i in range(100000):
+        t += 0.05
         yr = np.sin(2*np.pi*2*(1.3+np.sin(0.15*t))*x - 0.32*t) + \
              np.sin(2*np.pi*4.32*(1.3-np.sin(0.18*t))*x + 0.76*t) + \
              np.cos(2*np.pi*1.65*(1.3+np.sin(0.05*t))*x + 0.23*t)
