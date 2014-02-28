@@ -3,3 +3,8 @@
 *.bin
 *.elf
 tools/lpcrc/lpcrc
+StripeController.*
+*.a
+*.s
+.idea
+*.pyc
