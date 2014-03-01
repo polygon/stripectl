@@ -18,7 +18,6 @@
 
 #include "drivers/usb_cdc.h"
 #include "drivers/armmath.h"
-#include "core/inc/lpc13uxx_uart.h"
 //#include "core/inc/lpc13uxx_timer32.h"
 
 volatile uint32_t msTicks = 0;
@@ -84,7 +83,7 @@ void recv_data(uint8_t* buffer, uint32_t length)
 int main(void) {
 
 	SystemCoreClockUpdate();
-    //SysTick_Config(SystemCoreClock/1000);
+    //y3SysTick_Config(SystemCoreClock/1000);
 
     uint32_t i;
 
@@ -142,20 +141,7 @@ int main(void) {
         led_data[i][2] = 0;
     }
     LPC_GPIO->B0[12] = 0;
-    while (1)
-    {
-        output_stripe_data();
-    }
     LPC_GPIO->B0[14] = 0;
-    UARTInit(19200);
-
-    uint32_t idx_led = 0;
-    uint32_t idx_col = 0;
-
-    uint8_t strout[16];
-    memset(strout, 0, 16);
-    int len = snprintf(strout, 16, "%i\n", SystemCoreClock);
-    UARTSend(strout, len);
 
     usb_init();
 
