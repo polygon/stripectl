@@ -2,6 +2,7 @@
 #include "usb/power_api.h"
 #include "LPC13Uxx.h"
 #include <string.h>
+#include "drivers/usb_cdc.h"
 
 
 extern uint8_t VCOM_DeviceDescriptor[];
@@ -15,6 +16,8 @@ USBD_API_T* pUsbApi;
 #define VCOM_BUF_USBTXQ  2
 #define VCOM_BUF_UARTTXQ  3
 #define VCOM_BUF_ALLOCU  4
+
+extern void recv_data(uint8_t* buffer, uint32_t length);
 
 struct VCOM_DATA;
 typedef void (*VCOM_SEND_T) (struct VCOM_DATA* pVcom);
@@ -111,6 +114,7 @@ ErrorCode_t VCOM_bulk_in_hdlr(USBD_HANDLE_T hUsb, void* data, uint32_t event)
 	return LPC_OK;
 }
 
+extern ErrorCode_t VCOM_bulk_out_hdlr(USBD_HANDLE_T hUsb, void *data, uint32_t event);
 ErrorCode_t VCOM_bulk_out_hdlr(USBD_HANDLE_T hUsb, void* data, uint32_t event) 
 {
 	VCOM_DATA_T* pVcom = (VCOM_DATA_T*) data;
@@ -120,15 +124,7 @@ ErrorCode_t VCOM_bulk_out_hdlr(USBD_HANDLE_T hUsb, void* data, uint32_t event)
 
 			LPC_GPIO->B0[12] ^= 1;
 			pVcom->rxlen = pUsbApi->hw->ReadEP(hUsb, USB_CDC_EP_BULK_OUT, pVcom->rxBuf);
-			//pVcom->rxBuf[0] = pVcom->rxlen;
-			pUsbApi->hw->WriteEP (pVcom->hUsb, USB_CDC_EP_BULK_IN, pVcom->rxBuf, pVcom->rxlen);     
-			//	if (pVcom->rxlen == 0) {
-			//        pVcom->rxlen = pUsbApi->hw->ReadEP(hUsb, USB_CDC_EP_BULK_OUT, pVcom->rxBuf);
-			//        pVcom->send_fn(pVcom);
-			//      } else {
-			//        /* indicate bridge write buffer pending in USB buf */
-			//        pVcom->usbrx_pend = 1;
-			//      }
+            recv_data(pVcom->rxBuf, pVcom->rxlen);
 			break;
 		default: 
 			break;

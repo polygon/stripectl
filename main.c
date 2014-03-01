@@ -14,6 +14,7 @@
 #define NUM_LEDS 240
 
 #include <stdio.h>
+#include <string.h>
 
 #include "drivers/usb_cdc.h"
 #include "drivers/armmath.h"
@@ -23,35 +24,31 @@
 volatile uint32_t msTicks = 0;
 static uint8_t led_data[NUM_LEDS][3];
 uint32_t T0H, T0L, T1H, T1L;
-#define DATAPIN 11
+#define DATAPIN 9
+
+uint32_t ledptr = 0;
+uint32_t colptr = 0;
 
 void output_stripe_data()
 {
     uint32_t led, color;
     uint8_t bit;
-    uint32_t wait;
-    __disable_irq();
+    uint8_t out;
 
     for (led = 0; led < NUM_LEDS; led++)
         for (color = 0; color < 3; color++)
             for (bit = 128; bit != 0; bit = bit >> 1)
+            {
                 if (led_data[led][color] & bit)
-                {
-                    LPC_GPIO->B0[DATAPIN] = 1;
-                    for (wait = 0; wait < T1H/3; wait++) {}
-                    LPC_GPIO->B0[DATAPIN] = 0;
-                    for (wait = 0; wait < T1L/3; wait++) {}
-                }
+                    out = 0b11110000;
                 else
-                {
-                    LPC_GPIO->B0[DATAPIN] = 1;
-                    for (wait = 0; wait < T0H/3; wait++) {}
-                    LPC_GPIO->B0[DATAPIN] = 0;
-                    for (wait = 0; wait < T0L/3; wait++) {}
+                    out = 0b11000000;
 
-                }
+                while (!(LPC_SSP0->SR & 0x1)) {}  // Wait for non-full FIFO
 
-    __enable_irq();
+                LPC_SSP0->DR = out; // Write next byte to FIFO
+            }
+
 }
 
 void SysTick_Handler(void) {
@@ -63,10 +60,31 @@ void delay_ms(uint32_t ms) {
 	while ((msTicks-now) < ms);
 }
 
+void recv_data(uint8_t* buffer, uint32_t length)
+{
+    uint32_t i;
+    for (i = 0; i < length; i++)
+    {
+        led_data[ledptr][colptr] = buffer[i];
+        colptr++;
+        if (colptr == 3)
+        {
+            ledptr++;
+            colptr = 0;
+        }
+        if (ledptr == NUM_LEDS)
+        {
+            ledptr = 0;
+            output_stripe_data();
+            usb_send(46);
+        }
+    }
+}
+
 int main(void) {
 
 	SystemCoreClockUpdate();
-    SysTick_Config(SystemCoreClock/1000);
+    //SysTick_Config(SystemCoreClock/1000);
 
     uint32_t i;
 
@@ -75,8 +93,32 @@ int main(void) {
     T0L = 72;   // Actual: 72
     T1L = 47;   // Actual: 46.8
 
-	// clock to GPIO
-	LPC_SYSCON->SYSAHBCLKCTRL |= (1<<6);
+    // clock to GPIO, USB and SSP0
+    LPC_SYSCON->SYSAHBCLKCTRL |= (1<<6) | (1<<9) | (1<<11);
+
+    // Enable clock to SSP0 and de-assert the reset signal
+    LPC_SYSCON->SSP0CLKDIV = 1;
+    LPC_SYSCON->PRESETCTRL = 1;
+
+    // Configure pin as SSP0 output
+    LPC_IOCON->PIO0_9 = (0x1);
+
+    // Initialize SSP0
+    // 72MHz system clock, 400kHz target clock
+    // DIV=90, MUL=4 gives 64kHz = 8*target clock
+    // Set MUL=4 for 800kHz high speed mode
+    // Two bits high for 0, Four bits high for 1
+    LPC_SSP0->CR0 |= (0<<8);    // Prescaler 4
+
+    // 8 Bit frames, TI format, Bus clock low between frames
+    LPC_SSP0->CR0 |= (0x7) | (1<<4);
+
+    // Enable controller in master mode
+    LPC_SSP0->CR1 = 0;
+
+    LPC_SSP0->CPSR = 22; // 15
+    LPC_SSP0->IMSC = 0;
+    LPC_SSP0->CR1 = (LPC_SSP0->CR1 & 0xf)|(1<<1);
 
 	// configure the two LEDs PINs as GPIO (they default to jtag)
 	LPC_IOCON->TMS_PIO0_12  &= ~0x07;
@@ -93,44 +135,31 @@ int main(void) {
 	LPC_GPIO->DIR[0] |= (1<<14);
     LPC_GPIO->DIR[0] |= (1<<DATAPIN);
 
-    LPC_GPIO->B0[DATAPIN] = 0;
-
     for (i = 0; i < NUM_LEDS; i++)
     {
-        if (!(i % 10))
-        {
-            led_data[i][0] = 0;
-            led_data[i][1] = 32;
-            led_data[i][2] = 0;
-        }
+        led_data[i][0] = 0;
+        led_data[i][1] = 0;
+        led_data[i][2] = 0;
     }
     LPC_GPIO->B0[12] = 0;
-    output_stripe_data();
+    while (1)
+    {
+        output_stripe_data();
+    }
     LPC_GPIO->B0[14] = 0;
-    UARTInit(1500000);
+    UARTInit(19200);
 
     uint32_t idx_led = 0;
     uint32_t idx_col = 0;
 
-    while (1)
-    {
-        LPC_USART->FCR |= 0x2;  // Clear out FIFO
-        LPC_GPIO->B0[12] = 0;
-        //UARTSend(&pt, 1);       // Transmit ready signal
-        while (idx_led < NUM_LEDS)
-        {
-            if (LPC_USART->LSR & 0x1)   // There is data available
-                led_data[idx_led][idx_col++] = LPC_USART->RBR;
-            if (idx_col == 3)
-            {
-                idx_led++;
-                idx_col = 0;
-            }
-        }
+    uint8_t strout[16];
+    memset(strout, 0, 16);
+    int len = snprintf(strout, 16, "%i\n", SystemCoreClock);
+    UARTSend(strout, len);
 
-        LPC_GPIO->B0[12] = 1;
-        output_stripe_data();
-        idx_led = 0;
-    }
+    usb_init();
+
+    while (1)
+    {}
 }
 
