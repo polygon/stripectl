@@ -32,21 +32,28 @@ void output_stripe_data()
 {
     uint32_t led, color;
     uint8_t bit;
-    uint8_t out;
+    uint16_t out;
 
     for (led = 0; led < NUM_LEDS; led++)
         for (color = 0; color < 3; color++)
             for (bit = 128; bit != 0; bit = bit >> 1)
             {
-                if (led_data[led][color] & bit)
-                    out = 0b111000000000000;
+                if (!(led_data[led][color] & bit))
+                    out = 0b100000000000000;
                 else
-                    out = 0b111111100000000;
+                    out = 0b111111110000000;
 
                 while (!(LPC_SSP0->SR & 0x1)) {}  // Wait for non-full FIFO
 
                 LPC_SSP0->DR = out; // Write next byte to FIFO
             }
+
+    for (uint32_t i = 0; i < 50; i++)
+    {
+        while (!(LPC_SSP0->SR & 0x1)) {}  // Wait for non-full FIFO
+
+        LPC_SSP0->DR = 0;
+    }
 
 }
 
@@ -107,7 +114,7 @@ int main(void) {
     // DIV=90, MUL=4 gives 64kHz = 8*target clock
     // Set MUL=4 for 800kHz high speed mode
     // Two bits high for 0, Four bits high for 1
-    LPC_SSP0->CR0 |= (5<<8);    // Prescaler 4
+    LPC_SSP0->CR0 |= (2<<8);    // Prescaler 4
 
     // 8 Bit frames, TI format, Bus clock low between frames
     LPC_SSP0->CR0 |= (0xe) | (1<<4);
@@ -136,8 +143,8 @@ int main(void) {
 
     for (i = 0; i < NUM_LEDS; i++)
     {
-        led_data[i][0] = 64;
-        led_data[i][1] = 32;
+        led_data[i][0] = 16;
+        led_data[i][1] = 0;
         led_data[i][2] = 0;
     }
     LPC_GPIO->B0[12] = 0;
