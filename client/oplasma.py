@@ -7,9 +7,9 @@ import numpy as np
 import signal
 
 def plasma():
-    #led = LEDStripe()
-    #led = Stripesim()
-    led = Stripecache('oplasma3.a')
+#led = LEDStripe()
+    led = Stripesim()
+#led = Stripecache('oplasma3.a')
     x = np.linspace(0, 1, 240)
     t = 0
     for i in range(100000):

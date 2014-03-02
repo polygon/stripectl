@@ -39,9 +39,9 @@ void output_stripe_data()
             for (bit = 128; bit != 0; bit = bit >> 1)
             {
                 if (led_data[led][color] & bit)
-                    out = 0b11110000;
+                    out = 0b111000000000000;
                 else
-                    out = 0b11000000;
+                    out = 0b111111100000000;
 
                 while (!(LPC_SSP0->SR & 0x1)) {}  // Wait for non-full FIFO
 
@@ -107,15 +107,15 @@ int main(void) {
     // DIV=90, MUL=4 gives 64kHz = 8*target clock
     // Set MUL=4 for 800kHz high speed mode
     // Two bits high for 0, Four bits high for 1
-    LPC_SSP0->CR0 |= (0<<8);    // Prescaler 4
+    LPC_SSP0->CR0 |= (5<<8);    // Prescaler 4
 
     // 8 Bit frames, TI format, Bus clock low between frames
-    LPC_SSP0->CR0 |= (0x7) | (1<<4);
+    LPC_SSP0->CR0 |= (0xe) | (1<<4);
 
     // Enable controller in master mode
     LPC_SSP0->CR1 = 0;
 
-    LPC_SSP0->CPSR = 22; // 15
+    LPC_SSP0->CPSR = 2;
     LPC_SSP0->IMSC = 0;
     LPC_SSP0->CR1 = (LPC_SSP0->CR1 & 0xf)|(1<<1);
 
@@ -136,12 +136,14 @@ int main(void) {
 
     for (i = 0; i < NUM_LEDS; i++)
     {
-        led_data[i][0] = 0;
-        led_data[i][1] = 0;
+        led_data[i][0] = 64;
+        led_data[i][1] = 32;
         led_data[i][2] = 0;
     }
     LPC_GPIO->B0[12] = 0;
     LPC_GPIO->B0[14] = 0;
+
+    output_stripe_data();
 
     usb_init();
 

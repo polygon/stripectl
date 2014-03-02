@@ -5,8 +5,8 @@ import numpy as np
 import time
 
 class LEDStripe:
-    def __init__(self, port = '/dev/ttyUSB0', num_led = 240):
-        self.ser = serial.Serial(port=port, baudrate=1500000)
+    def __init__(self, port = '/dev/ttyACM3', num_led = 240):
+        self.ser = serial.Serial(port=port, baudrate=3000000)
         if self.ser.isOpen() is False:
             raise IOError('Failed to open serial port')
         self.num_led = num_led
